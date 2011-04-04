@@ -323,7 +323,7 @@ class PyInsteon(HAProtocol):
 
 	def _handle_received(self,data):
 		dataHex = binascii.hexlify(data)
-		print "Data Received=>" + dataHex
+		#print "Data Received=>" + dataHex
 		plm_command = int(dataHex[0:4],16)
 		print "Command->%d %s '%s'" % (plm_command,plm_command,PLM_Commands.get_key(plm_command))
 		callback = { 
@@ -416,35 +416,32 @@ class PyInsteon(HAProtocol):
 		# Of interest is that the controller will return an Ack before it is finished sending, so overrun wont be seen until next send
 		time.sleep(.5)
 
-	def sendInsteon(self, fromAddress, toAddress, group, messageDirect, messageBroadcast, messageGroup, messageAcknowledge, extended, hopsLeft, hopsMax, command1, command2, data):
+	def sendInsteon(self, toAddress, messageBroadcast, messageGroup, messageAcknowledge, hopsLeft, hopsMax, command1, command2):
 		"Send raw Insteon message"
 		messageType=0
-		if extended==False:
-			dataString	= "%04x" % PLM_Commands['insteon_send']
-		else:
-			dataString = "%04x" % PLM_Commands['insteon_ext_send']
-		dataString += fromAddress[0:2] + fromAddress[3:5] + fromAddress[6:7]
-		dataString += toAddress[0:2] + toAddress[3:5] + toAddress[6:7]
-		if messageAcknowledge:
-			messageType=messageType | 0b00100000
-		if messageGroup:
-			messageType=messageType | 0b01000000
+		dataString	= "%04x" % PLM_Commands['insteon_send']
+			
+		dataString += toAddress[0:2] + toAddress[3:5] + toAddress[6:8]
+		
 		if messageBroadcast:
-			messageType=messageType | 0b10000000
-		#Message Direct clears all other bits.. sorry thats the way it works
-		if messageDirect:
+			
+			if messageAcknowledge:
+				messageType=messageType | 0b00100000
+			if messageGroup:
+				messageType=messageType | 0b01000000
+			if messageBroadcast:
+				messageType=messageType | 0b10000000
+		else:	
+			#Message Direct clears all other bits.. sorry thats the way it works
 			messageType=0
-		if extended:
-			messageType=messageType | 0b00010000
+			
 		messageType = messageType | (hopsLeft  << 2)
 		messageType = messageType | hopsMax
-		dataString += binascii.hexlify(messageType)
-		dataString += command1
-		dataString += command2
-		if extended:
-			dataString += data
-
-		#crc goes here?
+		
+		dataString += str(binascii.hexlify(str(messageType)))
+		
+		dataString += str(command1)
+		dataString += str(command2)
 
 		print "InsteonSend=>%s" % (dataString)
 		self._send(dataString)
