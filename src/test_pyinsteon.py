@@ -3,31 +3,20 @@ Created on Mar 26, 2011
 
 @author: jason@sharpee.com
 '''
-import unittest
-from pyinsteon import PyInsteon, TCP
-#from mock import Mock
+import select
+from pyinsteon import PyInsteon, FTDI
 
+pyI = PyInsteon(FTDI('A6008a4L'))
 
-class TestPyInsteon(unittest.TestCase):
+try:
+	print pyI.getPLMInfo()
+	print pyI.getPLMInfo()
+	print pyI.getPLMInfo()
+	
+	select.select([],[],[])
+except Exception, ex: 
+	print ex
+except KeyboardInterrupt:
+	pass
 
-
-    def setUp(self):
-#        mockTCP = Mock()
-#        self.__insteon = PyInsteon(mockTCP)
-
-        self.__insteon = PyInsteon(TCP('192.168.13.146', 9761))
-        pass
-
-
-    def tearDown(self):
-        pass
-
-
-    def testVersion(self):
-        """test version number"""
-        version = self.__insteon.getVersion()
-        self.assertEqual(version,"92")
-
-if __name__ == "__main__":
-    #import sys;sys.argv = ['', 'Test.testName']
-    unittest.main()
+pyI.shutdown()
