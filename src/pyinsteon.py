@@ -82,42 +82,51 @@ class Lookup(dict):
 		return self[key]
 
 #PLM Serial Commands
-keys = ('insteon_received',
-		'insteon_ext_received',
-		'x10_received',
-		'all_link_complete',
-		'plm_button_event',
-		'user_user_reset',
-		'all_link_clean_failed',
-		'all_link_record',
-		'all_link_clean_status',
-		'',
-		'',
-		'',
-		'',
-		'',
-		'',
-		'',
-		'plm_info',
-		'all_link_send',
-		'insteon_send',
-		'x10_send',
-		'all_link_start',
-		'all_link_cancel',
-		'plm_reset',
-		'all_link_first_rec',
-		'all_link_next_rec',
-		'plm_set_config',
-		'plm_led_on',
-		'plm_led_off',
-		'all_link_manage_rec',
-		'insteon_nak',
-		'insteon_ack',
-		'rf_sleep',
-		'plm_get_config')
+keys = (
+		#inbound messages (from the PLM to the Host)
+		'insteon_received',					#0x0250
+		'insteon_ext_received',				#0x0251
+		'x10_received',						#0x0252
+		'all_link_complete',				#0x0253
+		'plm_button_event',					#0x0254
+		'user_reset',						#0x0255
+		'all_link_clean_failed',			#0x0256
+		'all_link_record',					#0x0257
+		'all_link_clean_status',			#0x0258
+		'',									#0x0259
+		'',									#0x025A
+		'',									#0x025B
+		'',									#0x025C
+		'',									#0x025D
+		'',									#0x025E
+		'',									#0x025F
+		
+		#outbound messages (from the Host to the PLM)
+		'plm_info',							#0x0260
+		'all_link_send',					#0x0261
+		'insteon_send',						#0x0262
+		'x10_send',							#0x0263
+		'all_link_start',					#0x0264
+		'all_link_cancel',					#0x0265
+		'set_host_device_category',			#0x0266
+		'plm_reset',						#0x0267
+		'set_insteon_ack_byte',				#0x0268
+		'all_link_first_rec',				#0x0269
+		'all_link_next_rec',				#0x026A
+		'plm_set_config',					#0x026B
+		'get_all_link_record_for_sender',	#0x026C
+		'plm_led_on',						#0x026D
+		'plm_led_off',						#0x026E
+		'all_link_manage_rec',				#0x026F
+		'set_insteon_nak_byte',				#0x0270
+		'set_insteon_ack_two_byte',			#0x0271
+		'rf_sleep',							#0x0272
+		'plm_get_config')					#0x0273
+
+#pprint.pprint(zip(keys, xrange(0x250, 0x274)))
 
 PLM_Commands = Lookup(zip(keys,xrange(0x250, 0x273)))
-#pprint.pprint(commands)
+#pprint.pprint(PLM_Commands)
 
 Insteon_Commmand_Codes = Lookup({
 								 'on':0x11,
@@ -313,6 +322,8 @@ class PyInsteon(HAProtocol):
 		self.__PLMInfoFetched = False
 		self.__PLMInfo = dict(id = None, devCat = None, devSubCat = None, firmwareVersion = None)
 		
+		self.__allLinkDatabase = None
+		
 		#start up the interface's thread to deal with reception
 		self.__i.start()
 		return None
@@ -325,15 +336,17 @@ class PyInsteon(HAProtocol):
 		dataHex = binascii.hexlify(data)
 
 		plm_command = int(dataHex[0:4],16)
-		print "Command->%d %s '%s'" % (plm_command,plm_command,PLM_Commands.get_key(plm_command))
 		callback = { 
 						'plm_info': self._recvPLMInfo,
+						'all_link_first_rec': self._recvAllLinkRecord,
 						'insteon_received': self._recvInsteon,
 						'insteon_ext_received': self._recvInsteon,
 						'x10_received': self._recvX10
 					}.get(PLM_Commands.get_key(plm_command))
 		if callback:
 			callback(dataHex)
+		else:
+			print "No callback for command->%s (%d)" % (PLM_Commands.get_key(plm_command), plm_command)
 
 		#Let other threads know data has been received and processed
 		self.__dataReceived.set()
@@ -354,6 +367,19 @@ class PyInsteon(HAProtocol):
 			self.__dataReceived.wait(1000)
 
 		return self.__PLMInfo
+
+	
+
+	def getAllLinkDatabase(self):
+		self._send("%04x" % PLM_Commands['all_link_first_rec'])
+		self.__dataReceived.wait(1000)
+
+	def _recvAllLinkRecord(self,dataHex):
+		
+		ackNackByte = dataHex[4:6]
+		print ackNackByte
+		
+		pass
 
 	def _recvInsteon(self,dataHex):
 		"Receive Handler for Insteon Data"

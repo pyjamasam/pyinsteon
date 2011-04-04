@@ -15,9 +15,11 @@ pyI = PyInsteon(FTDI('A6008a4L'))
 pyI.onReceivedInsteon(insteon_received)
 
 try:
-	print pyI.getPLMInfo()
+	#print pyI.getPLMInfo()
 	#print pyI.sendInsteon("18.4F.14", False, None, None, 5, 5,  '0D', '00')
-	print pyI.sendInsteon("17.C4.4A", False, None, None, 5, 5,  '0D', '00')
+	#print pyI.sendInsteon("17.C4.4A", False, None, None, 5, 5,  '0D', '00')
+	
+	print pyI.getAllLinkDatabase()
 	
 	
 	#print pyI.getPLMInfo()
