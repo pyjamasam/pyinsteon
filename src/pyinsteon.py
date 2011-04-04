@@ -323,7 +323,7 @@ class PyInsteon(HAProtocol):
 
 	def _handle_received(self,data):
 		dataHex = binascii.hexlify(data)
-		#print "Data Received=>" + dataHex
+
 		plm_command = int(dataHex[0:4],16)
 		print "Command->%d %s '%s'" % (plm_command,plm_command,PLM_Commands.get_key(plm_command))
 		callback = { 
