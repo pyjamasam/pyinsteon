@@ -368,7 +368,9 @@ class PyInsteon(HAProtocol):
 
 		return self.__PLMInfo
 
-	
+	def pingDevice(self, deviceAddress):
+		self.sendInsteon(deviceAddress, None, 5, 5,  '0F', '00')
+		self.__dataReceived.wait(2000)
 
 	def getAllLinkDatabase(self):
 		self._send("%04x" % PLM_Commands['all_link_first_rec'])
@@ -379,6 +381,19 @@ class PyInsteon(HAProtocol):
 		ackNackByte = dataHex[4:6]
 		print ackNackByte
 		
+		pass
+		
+		
+	def updateOrAddAllLinkDatabaseEntry(self, deviceAddress, flags, group, linkData1, linkData2, linkData3):
+		dataString	= "%04x" % PLM_Commands['all_link_manage_rec']		
+		dataString += "20"				#
+		dataString += deviceAddress[0:2] + deviceAddress[3:5] + deviceAddress[6:8] 
+		dataString += "%02x" % flags
+		dataString += "%02x" % group
+		dataString += "%02x%02x%02x" % (linkData1, linkData2, linkData3)
+		
+		self._send(dataString)
+		self.__dataReceived.wait(1000)
 		pass
 
 	def _recvInsteon(self,dataHex):
@@ -442,14 +457,14 @@ class PyInsteon(HAProtocol):
 		# Of interest is that the controller will return an Ack before it is finished sending, so overrun wont be seen until next send
 		time.sleep(.5)
 
-	def sendInsteon(self, toAddress, messageBroadcast, messageGroup, messageAcknowledge, hopsLeft, hopsMax, command1, command2):
+	def sendInsteon(self, toAddress, broadcastDetails, hopsLeft, hopsMax, command1, command2):
 		"Send raw Insteon message"
 		messageType=0
 		dataString	= "%04x" % PLM_Commands['insteon_send']
 			
 		dataString += toAddress[0:2] + toAddress[3:5] + toAddress[6:8]
 		
-		if messageBroadcast:
+		if broadcastDetails != None:
 			
 			if messageAcknowledge:
 				messageType=messageType | 0b00100000
@@ -461,10 +476,10 @@ class PyInsteon(HAProtocol):
 			#Message Direct clears all other bits.. sorry thats the way it works
 			messageType=0
 			
-		messageType = messageType | (hopsLeft  << 2)
-		messageType = messageType | hopsMax
+		messageType = messageType | (min(3,hopsLeft)  << 2)
+		messageType = messageType | min(3, hopsMax)				
 		
-		dataString += str(binascii.hexlify(str(messageType)))
+		dataString += "%02x" % messageType	
 		
 		dataString += str(command1)
 		dataString += str(command2)
