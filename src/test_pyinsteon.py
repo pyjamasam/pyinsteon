@@ -130,7 +130,7 @@ class CWInsteon(threading.Thread):
 		
 		self.__commandReturnData = dict()
 		
-		self.__intersend_delay = 1 #1 second between network sends
+		self.__intersend_delay = 0.15 #150 ms between network sends
 		self.__lastSendTime = 0
 
 		print "Using %s for PLM communication" % serialDevicePath
@@ -286,6 +286,20 @@ class CWInsteon(threading.Thread):
 		realTimeout = 2 #default timeout of 2 seconds
 		if timeout:
 			realTimeout = timeout
+			
+		timeoutOccured = False
+		
+		if sys.version_info[:2] > (2,6):
+			#python 2.7 and above waits correctly on events
+			timeoutOccured = not waitEvent.wait(realTimeout)
+		else:
+			#< then python 2.7 and we need to do the waiting manually
+			while not waitEvent.isSet() and realTimeout > 0:
+				time.sleep(0.1)
+				realTimeout -= 0.1
+				
+			if realTimeout == 0:
+				timeoutOccured = True
 					
 		if waitEvent.wait(realTimeout):	
 			if self.__commandReturnData.has_key(commandHash):
@@ -303,6 +317,7 @@ class CWInsteon(threading.Thread):
 				
 			print "Timed out for %s - Requeueing (already had %d retries)" % (commandHash, self.__retryCount[commandHash])
 			
+			requiresRetry = True
 			if self.__pendingCommandDetails.has_key(commandHash):
 				
 				self.__outboundCommandDetails[commandHash] = self.__pendingCommandDetails[commandHash]
@@ -312,10 +327,15 @@ class CWInsteon(threading.Thread):
 				self.__retryCount[commandHash] += 1
 			else:
 				print "Interesting.  timed out for %s, but there is no pending command details" % commandHash
+				#to prevent a huge loop here we bail out
+				requiresRetry = False
 			
 			self.__commandLock.release()
 			
-			return self.__waitForCommandToFinish(commandExecutionDetails, timeout = timeout)
+			if requiresRetry:
+				return self.__waitForCommandToFinish(commandExecutionDetails, timeout = timeout)
+			else:
+				return False
 		
 			
 
