@@ -301,7 +301,7 @@ class CWInsteon(threading.Thread):
 			if realTimeout == 0:
 				timeoutOccured = True
 					
-		if timeoutOccured:	
+		if not timeoutOccured:	
 			if self.__commandReturnData.has_key(commandHash):
 				return self.__commandReturnData[commandHash]
 			else:
